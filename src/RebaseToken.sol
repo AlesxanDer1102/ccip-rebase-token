@@ -45,6 +45,14 @@ contract RebaseToken is ERC20 {
     }
 
     /**
+     * @notice Get the principal balance of the user
+     * @param _user The user to get the principal balance of
+     */
+    function principalBalanceOf(address _user) external view returns (uint256) {
+        return super.balanceOf(_user);
+    }
+
+    /**
      * @notice Mint the user tokens when they deposit into the vault
      * @param _to The user to mint the tokens to
      * @param _amount The amount of tokens to mint
