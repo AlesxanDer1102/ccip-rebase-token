@@ -57,6 +57,19 @@ contract RebaseToken is ERC20 {
     }
 
     /**
+     * @notice Burn the user tokens when they withdraw from the vault
+     * @param _from the user to burn the tokens from
+     * @param _amount  the amount of tokens to burn
+     */
+    function burn(address _from, uint256 _amount) external {
+        if (_amount == type(uint256).max) {
+            _amount = balanceOf(_from);
+        }
+        _mintAccuratedInterest(_from);
+        _burn(_from, _amount);
+    }
+
+    /**
      * @notice calculate the balance of the user including the interest
      * @param _user  The user to get the balance of
      * @return The balance of the user including the interest
@@ -67,6 +80,50 @@ contract RebaseToken is ERC20 {
             (super.balanceOf(_user) *
                 _calculateUserAccumulatedInterestSinceLastUpdate(_user)) /
             PRECISION_FACTOR;
+    }
+
+    /**
+     * @notice Transfer tokens from one user to another
+     * @param _recipient  The recipient of the tokens
+     * @param _amount  The amount of tokens to transfer
+     * @return true if the transfer is successful
+     */
+    function transfer(
+        address _recipient,
+        uint256 _amount
+    ) public override returns (bool) {
+        _mintAccuratedInterest(msg.sender);
+        _mintAccuratedInterest(_recipient);
+        if (_amount == type(uint256).max) {
+            _amount = balanceOf(msg.sender);
+        }
+        if (balanceOf(_recipient) == 0) {
+            s_userInterestRate[_recipient] = s_userInterestRate[msg.sender];
+        }
+        return super.transfer(_recipient, _amount);
+    }
+
+    /**
+     * @notice Transfer tokens from one user to another
+     * @param _sender  The sender of the tokens
+     * @param _recipient  The recipient of the tokens
+     * @param _amount  The amount of tokens to transfer
+     * @return true if the transfer is successful
+     */
+    function transferFrom(
+        address _sender,
+        address _recipient,
+        uint256 _amount
+    ) public override returns (bool) {
+        _mintAccuratedInterest(_sender);
+        _mintAccuratedInterest(_recipient);
+        if (_amount == type(uint256).max) {
+            _amount = balanceOf(_sender);
+        }
+        if (balanceOf(_recipient) == 0) {
+            s_userInterestRate[_recipient] = s_userInterestRate[_sender];
+        }
+        return super.transferFrom(_sender, _recipient, _amount);
     }
 
     /**
@@ -84,18 +141,23 @@ contract RebaseToken is ERC20 {
             (s_userInterestRate[_user] * timeElapsed);
     }
 
-    function _mintAccuratedInterest(address _to) internal {
+    /**
+     * @notice Mint the Accurated interest to the user since the last time they interact with the protocol (eg, mint, deposit, withdraw)
+     * @param _user The user to mint the tokens to
+     */
+
+    function _mintAccuratedInterest(address _user) internal {
         // find their current balance of rebase tokens that have been minted to the user --> principal balance
-        uint256 previousPrincipalBalance = super.balanceOf(_to);
+        uint256 previousPrincipalBalance = super.balanceOf(_user);
         // calculate theit current balance including interest  -> balanceOf
-        uint256 currentBalance = balanceOf(_to);
+        uint256 currentBalance = balanceOf(_user);
         // calculate the number of tokens need to be minted to the user
         uint256 balanceIncrease = currentBalance - previousPrincipalBalance;
-        
-        s_userLastUpdatedTimestamp[_to] = block.timestamp;
+
+        s_userLastUpdatedTimestamp[_user] = block.timestamp;
 
         // call mint to mint the token to the user
-        _mint(_to, balanceIncrease);
+        _mint(_user, balanceIncrease);
     }
 
     /**
