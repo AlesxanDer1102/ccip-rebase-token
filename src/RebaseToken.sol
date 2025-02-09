@@ -72,7 +72,7 @@ contract RebaseToken is ERC20 {
     /**
      * @notice Calculate the interest that has accumulated since the last update
      * @param _user  The user to calculate the interest accumulated
-     * @return The interest that has accumulated since the last update
+     * @return  linearInterest The interest that has accumulated since the last update
      */
     function _calculateUserAccumulatedInterestSinceLastUpdate(
         address _user
@@ -81,17 +81,21 @@ contract RebaseToken is ERC20 {
             s_userLastUpdatedTimestamp[_user];
         linearInterest =
             PRECISION_FACTOR +
-            (s_userLastUpdatedTimestamp[_user] * timeElapsed);
+            (s_userInterestRate[_user] * timeElapsed);
     }
 
     function _mintAccuratedInterest(address _to) internal {
         // find their current balance of rebase tokens that have been minted to the user --> principal balance
+        uint256 previousPrincipalBalance = super.balanceOf(_to);
         // calculate theit current balance including interest  -> balanceOf
+        uint256 currentBalance = balanceOf(_to);
         // calculate the number of tokens need to be minted to the user
-        // call mint to mint the token to the user
+        uint256 balanceIncrease = currentBalance - previousPrincipalBalance;
+        
         s_userLastUpdatedTimestamp[_to] = block.timestamp;
 
-        _mint(_to, interest);
+        // call mint to mint the token to the user
+        _mint(_to, balanceIncrease);
     }
 
     /**
